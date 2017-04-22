@@ -595,7 +595,7 @@ class ImgurClient(object):
         
         return await self.make_request('POST', 'upload', data, anon)
 
-   async def upload_from_url(self, url, config=None, anon=True):
+    async def upload_from_url(self, url, config=None, anon=True):
         if not config:
             config = dict()
 
