@@ -244,7 +244,7 @@ class ImgurClient(object):
         self.validate_user_context(username)
         return await self.make_request('GET', 'account/%s/albums/count' % username)
 
-   async def get_account_comments(self, username, sort='newest', page=0):
+    async def get_account_comments(self, username, sort='newest', page=0):
         self.validate_user_context(username)
         comments = await self.make_request('GET', 'account/%s/comments/%s/%s' % (username, sort, page))
 
