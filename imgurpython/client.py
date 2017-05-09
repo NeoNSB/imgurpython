@@ -1,5 +1,6 @@
 import base64
 import aiohttp
+import asyncio
 from .imgur.models.tag import Tag
 from .imgur.models.album import Album
 from .imgur.models.image import Image
@@ -80,13 +81,16 @@ class ImgurClient(object):
         if refresh_token is not None:
             self.auth = AuthWrapper(access_token, refresh_token, client_id, client_secret)
 
-        self.credits = self.get_credits()
+        asyncio.get_event_loop().create_task(self.set_credits())   
 
     def set_user_auth(self, access_token, refresh_token):
         self.auth = AuthWrapper(access_token, refresh_token, self.client_id, self.client_secret)
 
     def get_client_id(self):
         return self.client_id
+
+    async def set_credits(self):
+        self.credits = await self.get_credits()
 
     async def get_credits(self):
         return await self.make_request('GET', 'credits', None, True)
