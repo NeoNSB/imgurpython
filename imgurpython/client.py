@@ -162,7 +162,7 @@ class ImgurClient(object):
 
                 return response_data['data'] if 'data' in response_data.keys() else response_data
         finally:
-            await session.close()
+            session.close()
 
     def validate_user_context(self, username):
         if username == 'me' and self.auth is None:
