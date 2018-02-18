@@ -47,7 +47,7 @@ class AuthWrapper(object):
         }
 
         url = API_URL + 'oauth2/token'
-        with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
             async with session.post(url, data=data) as r:
                 if response.status != 200:
                     raise ImgurClientError('Error refreshing access token!', response.status)
