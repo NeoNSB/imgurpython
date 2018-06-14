@@ -1,21 +1,21 @@
-import base64
-import aiohttp
 import asyncio
-from .imgur.models.tag import Tag
-from .imgur.models.album import Album
-from .imgur.models.image import Image
+import base64
+
+import aiohttp
+
+from .helpers.error import ImgurClientError, ImgurClientRateLimitError
+from .helpers.format import (build_gallery_images_and_albums,
+                             build_notification, build_notifications,
+                             format_comment_tree)
 from .imgur.models.account import Account
-from .imgur.models.comment import Comment
-from .imgur.models.tag_vote import TagVote
-from .helpers.error import ImgurClientError
-from .helpers.format import build_notification
-from .helpers.format import format_comment_tree
-from .helpers.format import build_notifications
-from .imgur.models.conversation import Conversation
-from .helpers.error import ImgurClientRateLimitError
-from .helpers.format import build_gallery_images_and_albums
-from .imgur.models.custom_gallery import CustomGallery
 from .imgur.models.account_settings import AccountSettings
+from .imgur.models.album import Album
+from .imgur.models.comment import Comment
+from .imgur.models.conversation import Conversation
+from .imgur.models.custom_gallery import CustomGallery
+from .imgur.models.image import Image
+from .imgur.models.tag import Tag
+from .imgur.models.tag_vote import TagVote
 
 API_URL = 'https://api.imgur.com/'
 MASHAPE_URL = 'https://imgur-apiv3.p.mashape.com/'
@@ -49,8 +49,8 @@ class AuthWrapper(object):
         url = API_URL + 'oauth2/token'
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=data) as r:
-                if response.status != 200:
-                    raise ImgurClientError('Error refreshing access token!', response.status)
+                if r.status != 200:
+                    raise ImgurClientError('Error refreshing access token!', r.status)
                 response_data = await r.json()
         self.current_access_token = response_data['access_token']
 
@@ -81,7 +81,7 @@ class ImgurClient(object):
         if refresh_token is not None:
             self.auth = AuthWrapper(access_token, refresh_token, client_id, client_secret)
 
-        asyncio.get_event_loop().create_task(self.set_credits())   
+        asyncio.get_event_loop().create_task(self.set_credits())
 
     def set_user_auth(self, access_token, refresh_token):
         self.auth = AuthWrapper(access_token, refresh_token, self.client_id, self.client_secret)
@@ -123,15 +123,14 @@ class ImgurClient(object):
 
 
     async def make_request(self, method, route, data=None, force_anon=False):
-        try:
-            method = method.lower()
-            session = aiohttp.ClientSession()
-            predicate = getattr(session, method)
+        method = method.lower()
 
-            header = self.prepare_headers(force_anon)
-            url = (MASHAPE_URL if self.mashape_key is not None else API_URL) + ('3/%s' % route if 'oauth2' not in route else route)
+        header = self.prepare_headers(force_anon)
+        url = (MASHAPE_URL if self.mashape_key is not None else API_URL) + ('3/%s' % route if 'oauth2' not in route else route)
 
-            async with predicate(url, headers=header, params=data, data=data) as response:
+        async with aiohttp.ClientSession() as session:
+            method_to_call = getattr(session, method)
+            async with method_to_call(url, headers=header, params=data, data=data) as response:
                 if response.status == 403 and self.auth is not None:
                     await self.auth.refresh()
                     header = self.prepare_headers()
@@ -161,8 +160,6 @@ class ImgurClient(object):
                     raise ImgurClientError(response_data['data']['error'], response.status)
 
                 return response_data['data'] if 'data' in response_data.keys() else response_data
-        finally:
-            session.close()
 
     def validate_user_context(self, username):
         if username == 'me' and self.auth is None:
